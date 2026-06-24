@@ -303,10 +303,6 @@ main,
   margin-right: auto;
 }
 
-.admin-actions .right-action {
-  margin-left: 0;
-}
-
 .admin-actions button {
   padding: 8px 9px;
   font-size: 12px;
