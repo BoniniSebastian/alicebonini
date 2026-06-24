@@ -48,7 +48,15 @@ const itemPrice = document.getElementById("itemPrice");
 const uploadItem = document.getElementById("uploadItem");
 const uploadStatus = document.getElementById("uploadStatus");
 
+const editModal = document.getElementById("editModal");
+const closeEdit = document.getElementById("closeEdit");
+const editSize = document.getElementById("editSize");
+const editPrice = document.getElementById("editPrice");
+const saveEdit = document.getElementById("saveEdit");
+const editStatus = document.getElementById("editStatus");
+
 const statAvailable = document.getElementById("statAvailable");
+const statAvailableValue = document.getElementById("statAvailableValue");
 const statHandle = document.getElementById("statHandle");
 const statHandleValue = document.getElementById("statHandleValue");
 const statHistory = document.getElementById("statHistory");
@@ -76,6 +84,7 @@ let allItems = [];
 let publicItems = [];
 let currentIndex = 0;
 let currentAdminFilter = "reserved";
+let currentEditItem = null;
 let isAdmin = localStorage.getItem("alice_admin") === "true";
 
 function showToast(text) {
@@ -87,11 +96,6 @@ function showToast(text) {
 function statusOf(item) {
   if (item.status === "paid") return "reserved";
   return item.status || "available";
-}
-
-function isSoldLike(item) {
-  const s = statusOf(item);
-  return s === "reserved" || s === "delivered";
 }
 
 function statusLabel(status) {
@@ -106,6 +110,12 @@ function priceNumber(price) {
   return cleaned ? Number(cleaned[0]) : 0;
 }
 
+function normalizePrice(price) {
+  const number = priceNumber(price);
+  if (!number) return "";
+  return `${Math.round(number).toLocaleString("sv-SE")} kr`;
+}
+
 function formatKr(value) {
   return `${Math.round(value).toLocaleString("sv-SE")} kr`;
 }
@@ -115,10 +125,12 @@ function updateStats() {
   const handle = allItems.filter(item => statusOf(item) === "reserved");
   const history = allItems.filter(item => statusOf(item) === "delivered");
 
+  const availableTotal = available.reduce((sum, item) => sum + priceNumber(item.price), 0);
   const handleTotal = handle.reduce((sum, item) => sum + priceNumber(item.price), 0);
   const historyTotal = history.reduce((sum, item) => sum + priceNumber(item.price), 0);
 
   statAvailable.textContent = available.length;
+  statAvailableValue.textContent = `tot. ${formatKr(availableTotal)}`;
   statHandle.textContent = handle.length;
   statHandleValue.textContent = `tot. ${formatKr(handleTotal)}`;
   statHistory.textContent = history.length;
@@ -232,22 +244,22 @@ function filterName(filter) {
 function adminButtons(status) {
   if (status === "available") {
     return `
-      <button data-action="reserve" class="primary-action secondary">Hantera</button>
-      <button data-action="delete" class="danger right-action">Ta bort</button>
+      <button data-action="edit" class="primary-action secondary">Ändra</button>
+      <button data-action="delete" class="danger">Ta bort</button>
     `;
   }
 
   if (status === "reserved") {
     return `
       <button data-action="delivered" class="primary-action">Klar</button>
-      <button data-action="available" class="secondary right-action">Lägg tillbaks</button>
+      <button data-action="available" class="secondary">Lägg tillbaks</button>
       <button data-action="delete" class="danger">Ta bort</button>
     `;
   }
 
   if (status === "delivered") {
     return `
-      <button data-action="available" class="secondary right-action">Lägg tillbaks</button>
+      <button data-action="available" class="secondary primary-action">Lägg tillbaks</button>
       <button data-action="delete" class="danger">Ta bort</button>
     `;
   }
@@ -256,19 +268,16 @@ function adminButtons(status) {
 }
 
 async function handleAdminAction(item, action) {
-  const ref = doc(db, COLLECTION_NAME, item.id);
+  const itemRef = doc(db, COLLECTION_NAME, item.id);
 
   try {
-    if (action === "reserve") {
-      await updateDoc(ref, {
-        status: "reserved",
-        reservedAt: serverTimestamp()
-      });
-      showToast("Flyttad till Hantera");
+    if (action === "edit") {
+      openEditModal(item);
+      return;
     }
 
     if (action === "delivered") {
-      await updateDoc(ref, {
+      await updateDoc(itemRef, {
         status: "delivered",
         deliveredAt: serverTimestamp()
       });
@@ -276,7 +285,7 @@ async function handleAdminAction(item, action) {
     }
 
     if (action === "available") {
-      await updateDoc(ref, {
+      await updateDoc(itemRef, {
         status: "available",
         buyerName: "",
         buyerMessage: "",
@@ -290,12 +299,52 @@ async function handleAdminAction(item, action) {
     if (action === "delete") {
       const ok = confirm("Vill du ta bort varan helt?");
       if (!ok) return;
-      await deleteDoc(ref);
+      await deleteDoc(itemRef);
       showToast("Vara borttagen");
     }
   } catch (err) {
     console.error(err);
     showToast("Något gick fel");
+  }
+}
+
+function openEditModal(item) {
+  currentEditItem = item;
+  editSize.value = item.size || "";
+  editPrice.value = item.price || "";
+  editStatus.textContent = "";
+  editModal.classList.remove("hidden");
+}
+
+async function saveEditItem() {
+  if (!currentEditItem) return;
+
+  const size = editSize.value.trim();
+  const price = normalizePrice(editPrice.value.trim());
+
+  if (!size || !price) {
+    editStatus.textContent = "Fyll i storlek och pris.";
+    return;
+  }
+
+  saveEdit.disabled = true;
+  editStatus.textContent = "Sparar...";
+
+  try {
+    await updateDoc(doc(db, COLLECTION_NAME, currentEditItem.id), {
+      size,
+      price,
+      updatedAt: serverTimestamp()
+    });
+
+    editModal.classList.add("hidden");
+    currentEditItem = null;
+    showToast("Ändringen är sparad");
+  } catch (err) {
+    console.error(err);
+    editStatus.textContent = "Något gick fel.";
+  } finally {
+    saveEdit.disabled = false;
   }
 }
 
@@ -366,7 +415,7 @@ async function submitBuy() {
 async function uploadNewItem() {
   const file = itemImage.files[0];
   const size = itemSize.value.trim();
-  const price = itemPrice.value.trim();
+  const price = normalizePrice(itemPrice.value.trim());
 
   if (!file || !size || !price) {
     uploadStatus.textContent = "Välj bild och fyll i storlek och pris.";
@@ -525,6 +574,9 @@ openUpload.addEventListener("click", () => {
 closeUpload.addEventListener("click", () => uploadModal.classList.add("hidden"));
 uploadItem.addEventListener("click", uploadNewItem);
 
+closeEdit.addEventListener("click", () => editModal.classList.add("hidden"));
+saveEdit.addEventListener("click", saveEditItem);
+
 closeProduct.addEventListener("click", () => productModal.classList.add("hidden"));
 prevItem.addEventListener("click", () => moveProduct(-1));
 nextItem.addEventListener("click", () => moveProduct(1));
@@ -561,6 +613,10 @@ pinModal.addEventListener("click", e => {
 
 uploadModal.addEventListener("click", e => {
   if (e.target === uploadModal) uploadModal.classList.add("hidden");
+});
+
+editModal.addEventListener("click", e => {
+  if (e.target === editModal) editModal.classList.add("hidden");
 });
 
 const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
