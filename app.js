@@ -1,470 +1,542 @@
-const app = document.getElementById("app");
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  serverTimestamp,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-const modePill = document.getElementById("modePill");
-const systemText = document.getElementById("systemText");
-const coreMode = document.getElementById("coreMode");
-const stageText = document.getElementById("stageText");
-
-const powerDial = document.getElementById("powerDial");
-const boostDial = document.getElementById("boostDial");
-const leftArc = document.getElementById("leftArc");
-const rightArc = document.getElementById("rightArc");
-
-const powerValue = document.getElementById("powerValue");
-const boostValue = document.getElementById("boostValue");
-
-const surgeDial = document.getElementById("surgeDial");
-const thrustDial = document.getElementById("thrustDial");
-const heatDial = document.getElementById("heatDial");
-const fluxDial = document.getElementById("fluxDial");
-
-const surgeValue = document.getElementById("surgeValue");
-const thrustValue = document.getElementById("thrustValue");
-const heatValue = document.getElementById("heatValue");
-const fluxValue = document.getElementById("fluxValue");
-
-const powerCaption = document.getElementById("powerCaption");
-const boostCaption = document.getElementById("boostCaption");
-
-const reactorBar = document.getElementById("reactorBar");
-const turboBar = document.getElementById("turboBar");
-const syncBar = document.getElementById("syncBar");
-
-const reactorPct = document.getElementById("reactorPct");
-const turboPct = document.getElementById("turboPct");
-const syncPct = document.getElementById("syncPct");
-
-const shockContainer = document.getElementById("shockContainer");
-const flashLayer = document.getElementById("flashLayer");
-
-const evBtn = document.getElementById("evBtn");
-const startBtn = document.getElementById("startBtn");
-const turboBtn = document.getElementById("turboBtn");
-
-const startSound = new Audio("assets/Start engine.mp3");
-const turboSound = new Audio("assets/Ferrari acc.mp3");
-startSound.preload = "auto";
-turboSound.preload = "auto";
-
-let state = "ev";
-let animFrame = null;
-let ticker = 0;
-
-const values = {
-  power: 38,
-  boost: 12,
-  surge: 22,
-  thrust: 14,
-  heat: 8,
-  flux: 16,
-  reactor: 34,
-  turbo: 8,
-  sync: 19
+const firebaseConfig = {
+  apiKey: "AIzaSyBGqhvs2eVK8gfYGtk6jNJR34tpXtKa-nM",
+  authDomain: "alice-saljer.firebaseapp.com",
+  projectId: "alice-saljer",
+  storageBucket: "alice-saljer.firebasestorage.app",
+  messagingSenderId: "158329497694",
+  appId: "1:158329497694:web:4b756d730ee775502faccf"
 };
 
-function clamp(num, min, max){
-  return Math.max(min, Math.min(max, num));
+const ADMIN_PIN = "1234";
+const COLLECTION_NAME = "alice_items";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const gallery = document.getElementById("gallery");
+const adminPanel = document.getElementById("adminPanel");
+const adminList = document.getElementById("adminList");
+
+const adminGear = document.getElementById("adminGear");
+const pinModal = document.getElementById("pinModal");
+const closePin = document.getElementById("closePin");
+const pinInput = document.getElementById("pinInput");
+const pinSubmit = document.getElementById("pinSubmit");
+const pinError = document.getElementById("pinError");
+const logoutAdmin = document.getElementById("logoutAdmin");
+
+const itemImage = document.getElementById("itemImage");
+const itemSize = document.getElementById("itemSize");
+const itemPrice = document.getElementById("itemPrice");
+const uploadItem = document.getElementById("uploadItem");
+const uploadStatus = document.getElementById("uploadStatus");
+
+const productModal = document.getElementById("productModal");
+const closeProduct = document.getElementById("closeProduct");
+const modalImage = document.getElementById("modalImage");
+const modalPrice = document.getElementById("modalPrice");
+const modalSize = document.getElementById("modalSize");
+const buyButton = document.getElementById("buyButton");
+const prevItem = document.getElementById("prevItem");
+const nextItem = document.getElementById("nextItem");
+
+const buyModal = document.getElementById("buyModal");
+const closeBuy = document.getElementById("closeBuy");
+const buyerName = document.getElementById("buyerName");
+const buyerMessage = document.getElementById("buyerMessage");
+const sendBuy = document.getElementById("sendBuy");
+const buyStatus = document.getElementById("buyStatus");
+
+const toast = document.getElementById("toast");
+
+let allItems = [];
+let publicItems = [];
+let currentIndex = 0;
+let currentAdminFilter = "all";
+let isAdmin = localStorage.getItem("alice_admin") === "true";
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.remove("hidden");
+  setTimeout(() => toast.classList.add("hidden"), 2800);
 }
 
-function setDial(el, pct){
-  el.style.setProperty("--pct", clamp(pct, 0, 100));
+function statusOf(item) {
+  return item.status || "available";
 }
 
-function setBar(el, pct){
-  el.style.width = `${clamp(pct, 0, 100)}%`;
+function isSoldLike(item) {
+  const s = statusOf(item);
+  return s === "reserved" || s === "paid" || s === "delivered";
 }
 
-function setArcStrength(el, pct){
-  const o = 0.35 + (clamp(pct, 0, 100) / 100) * 0.65;
-  el.style.opacity = o.toFixed(2);
+function statusLabel(status) {
+  if (status === "available") return "Till salu";
+  if (status === "reserved") return "Reserverad / köpt";
+  if (status === "paid") return "Betald";
+  if (status === "delivered") return "Levererad";
+  return "Till salu";
 }
 
-function pad2(n){
-  return String(Math.round(n)).padStart(2, "0");
+function sortPublic(items) {
+  return [...items].sort((a, b) => {
+    const aSold = statusOf(a) === "reserved" || statusOf(a) === "paid";
+    const bSold = statusOf(b) === "reserved" || statusOf(b) === "paid";
+
+    if (aSold && !bSold) return 1;
+    if (!aSold && bSold) return -1;
+
+    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+  });
 }
 
-function pulseFlash(ms = 160){
-  app.classList.add("flash");
-  setTimeout(() => app.classList.remove("flash"), ms);
+function sortAdmin(items) {
+  const order = {
+    reserved: 1,
+    paid: 2,
+    available: 3,
+    delivered: 4
+  };
+
+  return [...items].sort((a, b) => {
+    const diff = (order[statusOf(a)] || 9) - (order[statusOf(b)] || 9);
+    if (diff !== 0) return diff;
+    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+  });
 }
 
-function render(){
-  powerValue.textContent = Math.round(values.power);
-  boostValue.textContent = Math.round(values.boost);
+function renderGallery() {
+  gallery.innerHTML = "";
 
-  surgeValue.textContent = pad2(values.surge);
-  thrustValue.textContent = pad2(values.thrust);
-  heatValue.textContent = pad2(values.heat);
-  fluxValue.textContent = pad2(values.flux);
+  publicItems = sortPublic(
+    allItems.filter(item => statusOf(item) !== "delivered")
+  );
 
-  reactorPct.textContent = `${Math.round(values.reactor)}%`;
-  turboPct.textContent = `${pad2(values.turbo)}%`;
-  syncPct.textContent = `${pad2(values.sync)}%`;
-
-  setDial(powerDial, values.power);
-  setDial(boostDial, values.boost);
-
-  setDial(surgeDial.querySelector(".miniDialRing"), values.surge);
-  setDial(thrustDial.querySelector(".miniDialRing"), values.thrust);
-  setDial(heatDial.querySelector(".miniDialRing"), values.heat);
-  setDial(fluxDial.querySelector(".miniDialRing"), values.flux);
-
-  setArcStrength(leftArc, values.power);
-  setArcStrength(rightArc, values.boost);
-
-  setBar(reactorBar, values.reactor);
-  setBar(turboBar, values.turbo);
-  setBar(syncBar, values.sync);
-}
-
-function stopLoops(){
-  cancelAnimationFrame(animFrame);
-}
-
-function switchState(next){
-  state = next;
-  app.classList.remove("ev", "engine", "turbo");
-  app.classList.add(next);
-}
-
-function setTexts(mode, sys, core, stage, powerCap, boostCap){
-  modePill.textContent = mode;
-  systemText.textContent = sys;
-  coreMode.textContent = core;
-  stageText.textContent = stage;
-  powerCaption.textContent = powerCap;
-  boostCaption.textContent = boostCap;
-}
-
-function safePlay(audio){
-  try{
-    audio.currentTime = 0;
-    audio.play();
-  }catch(e){}
-}
-
-function shockwave(count = 1, delay = 0){
-  for(let i = 0; i < count; i++){
-    setTimeout(() => {
-      const wave = document.createElement("div");
-      wave.className = "shockWave";
-      shockContainer.appendChild(wave);
-      setTimeout(() => wave.remove(), 1100);
-    }, delay + i * 120);
+  if (publicItems.length === 0) {
+    gallery.innerHTML = "<p>Inga saker upplagda ännu.</p>";
+    return;
   }
+
+  publicItems.forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "card";
+
+    if (isSoldLike(item)) card.classList.add("sold");
+
+    card.innerHTML = `
+      <img src="${item.imageData}" alt="Vara" />
+      <div class="card-info">
+        <div class="card-price">${escapeHtml(item.price || "")}</div>
+        <div class="card-size">${item.size ? "Storlek " + escapeHtml(item.size) : ""}</div>
+      </div>
+      ${isSoldLike(item) ? `<div class="sold-badge">♥<br>SÅLD!</div>` : ""}
+    `;
+
+    card.addEventListener("click", () => openProduct(index));
+    gallery.appendChild(card);
+  });
 }
 
-function animateTo(target, duration = 420, callback){
-  const start = { ...values };
-  const startTime = performance.now();
+function renderAdmin() {
+  if (!isAdmin) {
+    adminPanel.classList.add("hidden");
+    return;
+  }
 
-  function frame(now){
-    const p = clamp((now - startTime) / duration, 0, 1);
-    const e = 1 - Math.pow(1 - p, 3);
+  adminPanel.classList.remove("hidden");
+  adminList.innerHTML = "";
 
-    Object.keys(target).forEach(key => {
-      values[key] = start[key] + (target[key] - start[key]) * e;
+  let items = sortAdmin(allItems);
+
+  if (currentAdminFilter !== "all") {
+    items = items.filter(item => statusOf(item) === currentAdminFilter);
+  }
+
+  if (items.length === 0) {
+    adminList.innerHTML = "<p>Inget att visa här.</p>";
+    return;
+  }
+
+  items.forEach(item => {
+    const status = statusOf(item);
+    const card = document.createElement("article");
+    card.className = "admin-card";
+
+    card.innerHTML = `
+      <img src="${item.imageData}" alt="Vara" />
+      <div>
+        <h4>${escapeHtml(item.price || "")} · ${escapeHtml(item.size || "")}</h4>
+        <p><strong>Status:</strong> ${statusLabel(status)}</p>
+        ${
+          item.buyerName
+            ? `<p><strong>Köpare:</strong> ${escapeHtml(item.buyerName)}</p>
+               <p><strong>Meddelande:</strong> ${escapeHtml(item.buyerMessage || "-")}</p>`
+            : `<p>Ingen köpare ännu.</p>`
+        }
+        <div class="admin-actions">
+          ${adminButtons(status)}
+        </div>
+      </div>
+    `;
+
+    card.querySelectorAll("[data-action]").forEach(btn => {
+      btn.addEventListener("click", () => handleAdminAction(item, btn.dataset.action));
     });
 
-    render();
+    adminList.appendChild(card);
+  });
+}
 
-    if(p < 1){
-      requestAnimationFrame(frame);
-    } else {
-      callback?.();
-    }
+function adminButtons(status) {
+  let html = "";
+
+  if (status === "available") {
+    html += `<button data-action="reserve" class="secondary">Reservera</button>`;
   }
 
-  requestAnimationFrame(frame);
-}
-
-function startEvAmbient(){
-  stopLoops();
-
-  setTexts(
-    "EV BEAST",
-    "core online",
-    "EV",
-    "E-DRIVE",
-    "electric pulse stable",
-    "standby pressure"
-  );
-
-  const loop = () => {
-    if(state !== "ev") return;
-
-    ticker += 0.02;
-
-    values.power = 38 + Math.sin(ticker) * 8 + Math.sin(ticker * 0.5) * 2;
-    values.boost = 10 + Math.sin(ticker * 1.5 + 1.1) * 4;
-    values.surge = 20 + Math.sin(ticker * 1.1) * 5;
-    values.thrust = 13 + Math.sin(ticker * 0.8 + 0.5) * 3;
-    values.heat = 7 + Math.sin(ticker * 0.7 + 2) * 2;
-    values.flux = 16 + Math.sin(ticker * 1.35 + 1.4) * 4;
-    values.reactor = 32 + Math.sin(ticker * 0.85) * 6;
-    values.turbo = 7 + Math.sin(ticker * 1.7 + 1.3) * 2;
-    values.sync = 18 + Math.sin(ticker * 0.6 + 0.8) * 4;
-
-    render();
-    animFrame = requestAnimationFrame(loop);
-  };
-
-  loop();
-}
-
-function holdEngineAmbient(){
-  stopLoops();
-
-  const loop = () => {
-    if(state !== "engine") return;
-
-    ticker += 0.045;
-
-    values.power = 74 + Math.sin(ticker * 0.9) * 5;
-    values.boost = 26 + Math.sin(ticker * 1.5) * 4;
-    values.surge = 48 + Math.sin(ticker * 1.2) * 4;
-    values.thrust = 37 + Math.sin(ticker * 1.1 + 0.6) * 3;
-    values.heat = 34 + Math.sin(ticker * 0.8 + 0.9) * 3;
-    values.flux = 42 + Math.sin(ticker * 1.6 + 0.8) * 4;
-    values.reactor = 70 + Math.sin(ticker * 1.1) * 5;
-    values.turbo = 20 + Math.sin(ticker * 1.8) * 2;
-    values.sync = 64 + Math.sin(ticker * 1.2 + 0.3) * 6;
-
-    render();
-    animFrame = requestAnimationFrame(loop);
-  };
-
-  loop();
-}
-
-function holdTurboAmbient(){
-  stopLoops();
-
-  const loop = () => {
-    if(state !== "turbo") return;
-
-    ticker += 0.085;
-
-    values.power = 96 + Math.sin(ticker * 1.9) * 4;
-    values.boost = 92 + Math.sin(ticker * 2.2 + 0.4) * 7;
-    values.surge = 95 + Math.sin(ticker * 2.3 + 1) * 5;
-    values.thrust = 91 + Math.sin(ticker * 1.8 + 2) * 7;
-    values.heat = 84 + Math.sin(ticker * 1.5 + 0.8) * 5;
-    values.flux = 88 + Math.sin(ticker * 2.0 + 1.7) * 6;
-    values.reactor = 98 + Math.sin(ticker * 2.1) * 2;
-    values.turbo = 97 + Math.sin(ticker * 2.8 + 0.2) * 3;
-    values.sync = 94 + Math.sin(ticker * 2 + 0.2) * 4;
-
-    render();
-    animFrame = requestAnimationFrame(loop);
-  };
-
-  loop();
-}
-
-function engineIgnitionSequence(){
-  stopLoops();
-  switchState("engine");
-  pulseFlash(220);
-
-  setTexts(
-    "IGNITION",
-    "ignition sequence",
-    "IGN",
-    "STAGE I",
-    "combustion wakeup",
-    "pressure rising"
-  );
-
-  shockwave(3, 80);
-
-  let frame = 0;
-  const duration = 210;
-
-  function loop(){
-    frame++;
-    const t = frame / duration;
-
-    if(t < 0.23){
-      values.power = 38 + t * 260;
-      values.boost = 12 + t * 80;
-      values.surge = 22 + t * 140;
-      values.thrust = 14 + t * 120;
-      values.heat = 8 + t * 90;
-      values.flux = 16 + t * 120;
-      values.reactor = 34 + t * 180;
-      values.turbo = 8 + t * 40;
-      values.sync = 19 + t * 110;
-    } else if(t < 0.42){
-      values.power = 95 - (t - 0.23) * 120;
-      values.boost = 30 - (t - 0.23) * 18;
-      values.surge = 54 - (t - 0.23) * 12;
-      values.thrust = 42 - (t - 0.23) * 10;
-      values.heat = 28 + (t - 0.23) * 35;
-      values.flux = 58 - (t - 0.23) * 10;
-      values.reactor = 76 - (t - 0.23) * 14;
-      values.turbo = 14 + (t - 0.23) * 8;
-      values.sync = 56 + (t - 0.23) * 26;
-    } else {
-      const settle = (t - 0.42) / 0.58;
-      values.power = 72 + Math.sin(settle * 10) * 3;
-      values.boost = 24 + Math.sin(settle * 8) * 2;
-      values.surge = 46 + Math.sin(settle * 6) * 3;
-      values.thrust = 36 + Math.sin(settle * 7) * 2;
-      values.heat = 32 + Math.sin(settle * 5) * 2;
-      values.flux = 40 + Math.sin(settle * 7) * 3;
-      values.reactor = 68 + Math.sin(settle * 6) * 3;
-      values.turbo = 18 + Math.sin(settle * 8) * 1.5;
-      values.sync = 63 + Math.sin(settle * 5) * 4;
-    }
-
-    render();
-
-    if(frame === 36) shockwave(2, 0);
-    if(frame === 82) {
-      shockwave(2, 0);
-      pulseFlash(140);
-    }
-
-    if(frame < duration){
-      animFrame = requestAnimationFrame(loop);
-    } else {
-      setTexts(
-        "ENGINE ONLINE",
-        "hybrid beast active",
-        "LIVE",
-        "STAGE II",
-        "reactor awake",
-        "boost armed"
-      );
-      holdEngineAmbient();
-    }
+  if (status === "reserved") {
+    html += `<button data-action="paid">Betald</button>`;
+    html += `<button data-action="available" class="secondary">Ångra</button>`;
   }
 
-  loop();
+  if (status === "paid") {
+    html += `<button data-action="delivered">Levererad</button>`;
+  }
+
+  if (status === "delivered") {
+    html += `<button data-action="available" class="secondary">Lägg tillbaka</button>`;
+  }
+
+  if (status !== "delivered" && status !== "available") {
+    html += `<button data-action="delivered" class="secondary">Levererad</button>`;
+  }
+
+  html += `<button data-action="delete" class="danger">Ta bort</button>`;
+  return html;
 }
 
-function turboSequence(){
-  stopLoops();
-  switchState("turbo");
-  pulseFlash(260);
+async function handleAdminAction(item, action) {
+  const ref = doc(db, COLLECTION_NAME, item.id);
 
-  setTexts(
-    "TURBO BEAST",
-    "boost engaged",
-    "RAGE",
-    "STAGE III",
-    "reactor overdrive",
-    "pressure unlocked"
-  );
-
-  shockwave(5, 0);
-  app.classList.add("turboShake");
-  setTimeout(() => app.classList.remove("turboShake"), 1200);
-
-  safePlay(turboSound);
-
-  const stages = [
-    { label: "STAGE III", power: 84, boost: 48, surge: 58, thrust: 46, heat: 38, flux: 52, reactor: 74, turbo: 42, sync: 73 },
-    { label: "STAGE IV",  power: 96, boost: 66, surge: 74, thrust: 63, heat: 52, flux: 68, reactor: 82, turbo: 58, sync: 84 },
-    { label: "STAGE V",   power: 100, boost: 82, surge: 89, thrust: 80, heat: 68, flux: 82, reactor: 92, turbo: 74, sync: 92 },
-    { label: "BEAST MAX", power: 100, boost: 100, surge: 100, thrust: 100, heat: 86, flux: 96, reactor: 100, turbo: 100, sync: 100 }
-  ];
-
-  let idx = 0;
-
-  function nextStage(){
-    if(idx >= stages.length){
-      setTexts(
-        "TURBO MAX",
-        "monster output stable",
-        "MAX",
-        "BEAST MAX",
-        "full reactor force",
-        "all pressure released"
-      );
-      holdTurboAmbient();
-      return;
+  try {
+    if (action === "reserve") {
+      await updateDoc(ref, {
+        status: "reserved",
+        reservedAt: serverTimestamp()
+      });
+      showToast("Markerad som reserverad");
     }
 
-    const target = stages[idx];
-    stageText.textContent = target.label;
-    shockwave(2, 0);
-    pulseFlash(110);
+    if (action === "paid") {
+      await updateDoc(ref, {
+        status: "paid",
+        paidAt: serverTimestamp()
+      });
+      showToast("Markerad som betald");
+    }
 
-    animateTo(target, 460, () => {
-      if(idx < stages.length - 1){
-        const dip = {
-          power: target.power - 10,
-          boost: target.boost - 7,
-          surge: target.surge - 9,
-          thrust: target.thrust - 8,
-          heat: target.heat + 3,
-          flux: target.flux - 7,
-          reactor: target.reactor - 6,
-          turbo: target.turbo - 5,
-          sync: target.sync - 6
-        };
+    if (action === "delivered") {
+      await updateDoc(ref, {
+        status: "delivered",
+        deliveredAt: serverTimestamp()
+      });
+      showToast("Markerad som levererad");
+    }
 
-        animateTo(dip, 150, () => {
-          idx++;
-          setTimeout(nextStage, 100);
-        });
-      } else {
-        idx++;
-        setTimeout(nextStage, 120);
-      }
+    if (action === "available") {
+      await updateDoc(ref, {
+        status: "available",
+        buyerName: "",
+        buyerMessage: "",
+        reservedAt: null,
+        paidAt: null,
+        deliveredAt: null
+      });
+      showToast("Tillbaka till salu");
+    }
+
+    if (action === "delete") {
+      const ok = confirm("Vill du ta bort varan helt?");
+      if (!ok) return;
+      await deleteDoc(ref);
+      showToast("Vara borttagen");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Något gick fel");
+  }
+}
+
+function openProduct(index) {
+  currentIndex = index;
+  const item = publicItems[currentIndex];
+
+  modalImage.src = item.imageData;
+  modalPrice.textContent = item.price || "";
+  modalSize.textContent = item.size ? `Storlek ${item.size}` : "";
+
+  if (isSoldLike(item)) {
+    buyButton.textContent = "Redan såld";
+    buyButton.disabled = true;
+  } else {
+    buyButton.textContent = "Köp / reservera";
+    buyButton.disabled = false;
+  }
+
+  productModal.classList.remove("hidden");
+}
+
+function moveProduct(direction) {
+  if (!publicItems.length) return;
+  currentIndex += direction;
+  if (currentIndex < 0) currentIndex = publicItems.length - 1;
+  if (currentIndex >= publicItems.length) currentIndex = 0;
+  openProduct(currentIndex);
+}
+
+async function submitBuy() {
+  const item = publicItems[currentIndex];
+  const name = buyerName.value.trim();
+  const message = buyerMessage.value.trim();
+
+  if (!name) {
+    buyStatus.textContent = "Skriv ditt namn först.";
+    return;
+  }
+
+  if (!item || isSoldLike(item)) {
+    buyStatus.textContent = "Den här varan är redan reserverad.";
+    return;
+  }
+
+  sendBuy.disabled = true;
+  buyStatus.textContent = "Skickar...";
+
+  try {
+    await updateDoc(doc(db, COLLECTION_NAME, item.id), {
+      status: "reserved",
+      buyerName: name,
+      buyerMessage: message,
+      reservedAt: serverTimestamp()
     });
+
+    buyModal.classList.add("hidden");
+    productModal.classList.add("hidden");
+    showToast("Tack! Alice har fått din förfrågan 💜");
+  } catch (err) {
+    console.error(err);
+    buyStatus.textContent = "Något gick fel. Testa igen.";
+  } finally {
+    sendBuy.disabled = false;
+  }
+}
+
+async function uploadNewItem() {
+  const file = itemImage.files[0];
+  const size = itemSize.value.trim();
+  const price = itemPrice.value.trim();
+
+  if (!file || !size || !price) {
+    uploadStatus.textContent = "Välj bild och fyll i storlek och pris.";
+    return;
   }
 
-  nextStage();
+  uploadItem.disabled = true;
+  uploadStatus.textContent = "Komprimerar bild...";
+
+  try {
+    const imageData = await compressImageToFirestoreSize(file);
+
+    uploadStatus.textContent = "Sparar vara...";
+
+    const id = crypto.randomUUID();
+
+    await setDoc(doc(db, COLLECTION_NAME, id), {
+      imageData,
+      size,
+      price,
+      status: "available",
+      buyerName: "",
+      buyerMessage: "",
+      createdAt: serverTimestamp(),
+      reservedAt: null,
+      paidAt: null,
+      deliveredAt: null
+    });
+
+    itemImage.value = "";
+    itemSize.value = "";
+    itemPrice.value = "";
+    uploadStatus.textContent = "Publicerad!";
+    showToast("Varan är upplagd");
+  } catch (err) {
+    console.error(err);
+    uploadStatus.textContent = err.message || "Något gick fel.";
+  } finally {
+    uploadItem.disabled = false;
+  }
 }
 
-function resetToEv(){
-  stopLoops();
-  switchState("ev");
-  pulseFlash(180);
+async function compressImageToFirestoreSize(file) {
+  let maxWidth = 1000;
+  let quality = 0.74;
 
-  setTexts(
-    "EV BEAST",
-    "returning to electric core",
-    "EV",
-    "E-DRIVE",
-    "electric pulse stable",
-    "standby pressure"
-  );
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const dataUrl = await resizeImage(file, maxWidth, quality);
 
-  shockwave(2, 0);
+    if (dataUrl.length < 850000) {
+      return dataUrl;
+    }
 
-  animateTo(
-    {
-      power: 38,
-      boost: 12,
-      surge: 22,
-      thrust: 14,
-      heat: 8,
-      flux: 16,
-      reactor: 34,
-      turbo: 8,
-      sync: 19
-    },
-    700,
-    () => startEvAmbient()
-  );
+    maxWidth = Math.round(maxWidth * 0.86);
+    quality = Math.max(0.48, quality - 0.06);
+  }
+
+  throw new Error("Bilden är för stor. Testa en annan bild eller beskär den först.");
 }
 
-evBtn.addEventListener("click", resetToEv);
+function resizeImage(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
 
-startBtn.addEventListener("click", () => {
-  if(state !== "ev") return;
-  safePlay(startSound);
-  engineIgnitionSequence();
+    reader.onload = event => {
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const width = Math.round(img.width * scale);
+        const height = Math.round(img.height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyAdminState() {
+  if (isAdmin) {
+    adminPanel.classList.remove("hidden");
+  } else {
+    adminPanel.classList.add("hidden");
+  }
+
+  renderAdmin();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+adminGear.addEventListener("click", () => {
+  pinModal.classList.remove("hidden");
+  pinInput.focus();
 });
 
-turboBtn.addEventListener("click", () => {
-  if(state === "ev") return;
-  turboSequence();
+closePin.addEventListener("click", () => pinModal.classList.add("hidden"));
+
+pinSubmit.addEventListener("click", () => {
+  if (pinInput.value === ADMIN_PIN) {
+    isAdmin = true;
+    localStorage.setItem("alice_admin", "true");
+    pinInput.value = "";
+    pinError.textContent = "";
+    pinModal.classList.add("hidden");
+    applyAdminState();
+    showToast("Adminläge öppnat");
+  } else {
+    pinError.textContent = "Fel PIN.";
+  }
 });
 
-render();
-startEvAmbient();
+logoutAdmin.addEventListener("click", () => {
+  isAdmin = false;
+  localStorage.removeItem("alice_admin");
+  applyAdminState();
+  showToast("Utloggad");
+});
+
+uploadItem.addEventListener("click", uploadNewItem);
+
+closeProduct.addEventListener("click", () => productModal.classList.add("hidden"));
+prevItem.addEventListener("click", () => moveProduct(-1));
+nextItem.addEventListener("click", () => moveProduct(1));
+
+buyButton.addEventListener("click", () => {
+  buyerName.value = "";
+  buyerMessage.value = "";
+  buyStatus.textContent = "";
+  buyModal.classList.remove("hidden");
+});
+
+closeBuy.addEventListener("click", () => buyModal.classList.add("hidden"));
+sendBuy.addEventListener("click", submitBuy);
+
+document.querySelectorAll(".filter").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+    currentAdminFilter = button.dataset.filter;
+    renderAdmin();
+  });
+});
+
+productModal.addEventListener("click", e => {
+  if (e.target === productModal) productModal.classList.add("hidden");
+});
+
+buyModal.addEventListener("click", e => {
+  if (e.target === buyModal) buyModal.classList.add("hidden");
+});
+
+pinModal.addEventListener("click", e => {
+  if (e.target === pinModal) pinModal.classList.add("hidden");
+});
+
+const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+
+onSnapshot(q, snapshot => {
+  allItems = snapshot.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  }));
+
+  renderGallery();
+  renderAdmin();
+}, error => {
+  console.error(error);
+  showToast("Kunde inte läsa databasen");
+});
+
+applyAdminState();
