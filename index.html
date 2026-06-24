@@ -17,24 +17,31 @@
   <section id="adminPanel" class="admin-panel hidden">
     <div class="admin-top">
       <h2>Admin</h2>
-      <button id="logoutAdmin" class="small-button">Logga ut</button>
+      <div class="admin-top-actions">
+        <button id="openUpload" class="plus-button" aria-label="Lägg upp ny vara">+</button>
+        <button id="logoutAdmin" class="small-button">Logga ut</button>
+      </div>
     </div>
 
-    <div class="upload-box">
-      <h3>Lägg upp ny vara</h3>
-      <input id="itemImage" type="file" accept="image/*" />
-      <input id="itemSize" type="text" placeholder="Storlek, t.ex. 152 / S / M" />
-      <input id="itemPrice" type="text" placeholder="Pris, t.ex. 80 kr" />
-      <button id="uploadItem">Publicera</button>
-      <p id="uploadStatus"></p>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div id="statAvailable" class="stat-number">0</div>
+        <div class="stat-label">prylar ute</div>
+      </div>
+      <div class="stat-card">
+        <div id="statHandle" class="stat-number">0</div>
+        <div id="statHandleValue" class="stat-label">tot. 0 kr</div>
+      </div>
+      <div class="stat-card">
+        <div id="statHistory" class="stat-number">0</div>
+        <div id="statHistoryValue" class="stat-label">tot. 0 kr</div>
+      </div>
     </div>
 
     <div class="filters">
-      <button class="filter active" data-filter="all">Alla</button>
       <button class="filter" data-filter="available">Till salu</button>
-      <button class="filter" data-filter="reserved">Sålt!</button>
-      <button class="filter" data-filter="paid">Betalda</button>
-      <button class="filter" data-filter="delivered">Levererade</button>
+      <button class="filter active" data-filter="reserved">Hantera</button>
+      <button class="filter" data-filter="delivered">Historik</button>
     </div>
 
     <div id="adminList" class="admin-list"></div>
@@ -50,6 +57,18 @@
     <input id="pinInput" type="password" placeholder="PIN-kod" />
     <button id="pinSubmit">Öppna admin</button>
     <p id="pinError" class="error"></p>
+  </div>
+</div>
+
+<div id="uploadModal" class="overlay hidden">
+  <div class="popup">
+    <button id="closeUpload" class="close">×</button>
+    <h2>Lägg upp vara</h2>
+    <input id="itemImage" type="file" accept="image/*" />
+    <input id="itemSize" type="text" placeholder="Storlek, t.ex. 152 / S / M" />
+    <input id="itemPrice" type="text" placeholder="Pris, t.ex. 80 kr" />
+    <button id="uploadItem">Publicera</button>
+    <p id="uploadStatus"></p>
   </div>
 </div>
 
