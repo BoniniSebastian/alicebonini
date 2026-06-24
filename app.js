@@ -239,7 +239,7 @@ function adminButtons(status) {
 
   if (status === "reserved") {
     return `
-      <button data-action="delivered" class="primary-action">Historik</button>
+      <button data-action="delivered" class="primary-action">Klar</button>
       <button data-action="available" class="secondary right-action">Lägg tillbaks</button>
       <button data-action="delete" class="danger">Ta bort</button>
     `;
