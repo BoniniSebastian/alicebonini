@@ -3,174 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyEngine Tesla Fit</title>
+  <title>Alice Bonini</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app ev" id="app">
-    <div class="bgGrid"></div>
-    <div class="bgGlow bgGlowA"></div>
-    <div class="bgGlow bgGlowB"></div>
-    <div class="speedLines"></div>
-    <div class="noise"></div>
-    <div class="flashLayer" id="flashLayer"></div>
 
-    <header class="topbar">
-      <div class="modePill" id="modePill">EV BEAST</div>
-      <div class="systemText" id="systemText">CORE ONLINE</div>
-    </header>
+<header class="header">
+  <button id="adminGear" class="gear">⚙</button>
+  <h1>Alice Bonini</h1>
+</header>
 
-    <main class="dashboard">
-      <section class="sideCluster leftCluster">
-        <div class="sideDialWrap">
-          <div class="sideDialLabel">POWER</div>
-          <div class="sideDial" id="powerDial">
-            <div class="sideDialInner">
-              <div class="sideDialValue" id="powerValue">38</div>
-              <div class="sideDialUnit">FLOW</div>
-            </div>
-          </div>
-        </div>
-        <div class="sideMiniText" id="powerCaption">electric pulse stable</div>
-      </section>
+<main>
+  <section id="adminPanel" class="admin-panel hidden">
+    <div class="admin-top">
+      <h2>Admin</h2>
+      <button id="logoutAdmin">Logga ut</button>
+    </div>
 
-      <section class="centerCore">
-        <section class="statusRails">
-          <div class="railRow">
-            <div class="railLabel">REACTOR LOAD</div>
-            <div class="railTrack">
-              <div class="railFill" id="reactorBar"></div>
-            </div>
-            <div class="railPct" id="reactorPct">34%</div>
-          </div>
+    <div class="upload-box">
+      <h3>Lägg upp ny vara</h3>
+      <input id="itemImage" type="file" accept="image/*" />
+      <input id="itemSize" type="text" placeholder="Storlek, t.ex. 152 / S / M" />
+      <input id="itemPrice" type="text" placeholder="Pris, t.ex. 80 kr" />
+      <button id="uploadItem">Publicera</button>
+      <p id="uploadStatus"></p>
+    </div>
 
-          <div class="railRow">
-            <div class="railLabel">TURBO PRESSURE</div>
-            <div class="railTrack">
-              <div class="railFill turboFill" id="turboBar"></div>
-            </div>
-            <div class="railPct" id="turboPct">08%</div>
-          </div>
+    <div class="filters">
+      <button class="filter active" data-filter="all">Alla</button>
+      <button class="filter" data-filter="available">Till salu</button>
+      <button class="filter" data-filter="reserved">Köpta</button>
+      <button class="filter" data-filter="paid">Betalda</button>
+      <button class="filter" data-filter="delivered">Levererade</button>
+    </div>
 
-          <div class="railRow">
-            <div class="railLabel">IGNITION SYNC</div>
-            <div class="railTrack">
-              <div class="railFill syncFill" id="syncBar"></div>
-            </div>
-            <div class="railPct" id="syncPct">19%</div>
-          </div>
-        </section>
+    <div id="adminList" class="admin-list"></div>
+  </section>
 
-        <div class="coreShell">
-          <div class="outerArc leftArc" id="leftArc"></div>
-          <div class="outerArc rightArc" id="rightArc"></div>
+  <section id="gallery" class="gallery"></section>
+</main>
 
-          <div class="orbit orbit1"></div>
-          <div class="orbit orbit2"></div>
-          <div class="orbit orbit3"></div>
-          <div class="orbit orbit4"></div>
-
-          <div class="shockContainer" id="shockContainer"></div>
-
-          <div class="coreAura coreAura1"></div>
-          <div class="coreAura coreAura2"></div>
-          <div class="coreAura coreAura3"></div>
-
-          <div class="spark spark1"></div>
-          <div class="spark spark2"></div>
-          <div class="spark spark3"></div>
-          <div class="spark spark4"></div>
-
-          <div class="core" id="core">
-            <div class="coreSpin coreSpinA"></div>
-            <div class="coreSpin coreSpinB"></div>
-            <div class="coreSpin coreSpinC"></div>
-            <div class="coreCenter">
-              <div class="coreLabel">CORE</div>
-              <div class="coreMode" id="coreMode">EV</div>
-              <div class="coreStage" id="stageText">E-DRIVE</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="miniDialZone">
-          <div class="miniDialPair miniDialPair-left">
-            <div class="miniDial" id="surgeDial">
-              <div class="miniDialTitle">SURGE</div>
-              <div class="miniDialRing">
-                <div class="miniDialInner">
-                  <div class="miniDialVal" id="surgeValue">22</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="miniDial" id="thrustDial">
-              <div class="miniDialTitle">THRUST</div>
-              <div class="miniDialRing">
-                <div class="miniDialInner">
-                  <div class="miniDialVal" id="thrustValue">14</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="miniDialPair miniDialPair-right">
-            <div class="miniDial" id="heatDial">
-              <div class="miniDialTitle">HEAT</div>
-              <div class="miniDialRing">
-                <div class="miniDialInner">
-                  <div class="miniDialVal" id="heatValue">08</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="miniDial" id="fluxDial">
-              <div class="miniDialTitle">FLUX</div>
-              <div class="miniDialRing">
-                <div class="miniDialInner">
-                  <div class="miniDialVal" id="fluxValue">16</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <section class="controlPod" aria-label="Kontroller">
-          <button class="podBtn evBtn" id="evBtn">
-            <span class="podGlow"></span>
-            <span class="podTop">EV</span>
-            <span class="podBottom">RETURN</span>
-          </button>
-
-          <button class="podBtn startBtn" id="startBtn">
-            <span class="podGlow"></span>
-            <span class="podTop">START</span>
-            <span class="podBottom">ENGINE</span>
-          </button>
-
-          <button class="podBtn turboBtn" id="turboBtn">
-            <span class="podGlow"></span>
-            <span class="podTop">TURBO</span>
-            <span class="podBottom">MODE</span>
-          </button>
-        </section>
-      </section>
-
-      <section class="sideCluster rightCluster">
-        <div class="sideDialWrap">
-          <div class="sideDialLabel">BOOST</div>
-          <div class="sideDial" id="boostDial">
-            <div class="sideDialInner">
-              <div class="sideDialValue" id="boostValue">12</div>
-              <div class="sideDialUnit">BOOST</div>
-            </div>
-          </div>
-        </div>
-        <div class="sideMiniText" id="boostCaption">standby pressure</div>
-      </section>
-    </main>
+<div id="pinModal" class="overlay hidden">
+  <div class="popup">
+    <button id="closePin" class="close">×</button>
+    <h2>Admin</h2>
+    <input id="pinInput" type="password" placeholder="PIN-kod" />
+    <button id="pinSubmit">Öppna admin</button>
+    <p id="pinError" class="error"></p>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<div id="productModal" class="overlay hidden">
+  <div class="product-modal">
+    <button id="closeProduct" class="close">×</button>
+    <button id="prevItem" class="nav left">‹</button>
+    <button id="nextItem" class="nav right">›</button>
+    <img id="modalImage" src="" alt="" />
+    <div class="product-info">
+      <h2 id="modalPrice"></h2>
+      <p id="modalSize"></p>
+      <button id="buyButton">Köp / reservera</button>
+    </div>
+  </div>
+</div>
+
+<div id="buyModal" class="overlay hidden">
+  <div class="popup">
+    <button id="closeBuy" class="close">×</button>
+    <h2>Köp / reservera</h2>
+    <input id="buyerName" type="text" placeholder="Ditt namn" />
+    <textarea id="buyerMessage" placeholder="Meddelande, frivilligt"></textarea>
+    <button id="sendBuy">Skicka köpintresse</button>
+    <p id="buyStatus"></p>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="script.js"></script>
 </body>
 </html>
