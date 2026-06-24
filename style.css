@@ -4,7 +4,9 @@
 
 body {
   margin: 0;
-  background: #000;
+  background:
+    linear-gradient(rgba(0,0,0,.58), rgba(0,0,0,.84)),
+    url("assets/bg.jpg") center top / cover no-repeat fixed;
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   min-height: 100vh;
