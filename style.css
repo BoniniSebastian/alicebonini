@@ -2,6 +2,14 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
 body {
   margin: 0;
   background:
@@ -10,19 +18,14 @@ body {
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   min-height: 100vh;
+  position: relative;
+}
+
+main,
+.header {
+  max-width: 100vw;
   overflow-x: hidden;
 }
-
-/*
-Vill du senare ha bakgrundsbild:
-lägg bilden i assets/bg.jpg och byt body-background till detta:
-
-body {
-  background:
-    linear-gradient(rgba(0,0,0,.76), rgba(0,0,0,.92)),
-    url("assets/bg.jpg") center/cover fixed;
-}
-*/
 
 .header {
   position: relative;
@@ -70,7 +73,7 @@ body {
 .gallery > p {
   grid-column: 1 / -1;
   text-align: center;
-  color: #777;
+  color: #ddd;
   margin-top: 40px;
 }
 
@@ -82,6 +85,7 @@ body {
   animation: fadeIn .45s ease both, floaty 4.2s ease-in-out infinite;
   box-shadow: 0 8px 22px rgba(0,0,0,.45);
   will-change: transform;
+  max-width: 100%;
 }
 
 .card:nth-child(2n) {
@@ -154,32 +158,168 @@ body {
   margin: 10px 12px 22px;
   padding: 14px;
   border-radius: 18px;
-  background: #101010;
+  background: rgba(16,16,16,.94);
   border: 1px solid rgba(232,182,255,.78);
   box-shadow:
     0 0 0 1px rgba(232,182,255,.13),
     0 0 20px rgba(232,182,255,.24);
+  max-width: calc(100vw - 24px);
 }
 
 .admin-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-.admin-panel h2,
-.admin-panel h3 {
-  margin: 0 0 10px;
+.admin-top h2 {
+  margin: 0;
 }
 
-.upload-box {
+.admin-top-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.plus-button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(232,182,255,.16);
+  color: white;
+  border: 1px solid rgba(232,182,255,.72);
+  font-size: 28px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px rgba(232,182,255,.24);
+}
+
+.small-button {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.stats-row {
   display: grid;
-  gap: 9px;
-  margin-top: 14px;
-  padding: 13px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,.075);
+  border: 1px solid rgba(232,182,255,.28);
+  border-radius: 14px;
+  padding: 10px 5px;
+  text-align: center;
+  min-width: 0;
+}
+
+.stat-number {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+}
+
+.stat-label {
+  margin-top: 5px;
+  font-size: 10px;
+  color: #d8c7df;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.filter {
+  background: #252525;
+  color: white;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 10px 6px;
+}
+
+.filter.active {
+  background: #e8b6ff;
+  color: #130014;
+}
+
+.admin-list {
+  display: grid;
+  gap: 11px;
+}
+
+.admin-card {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 11px;
+  background: #181818;
   border-radius: 16px;
-  border: 1px solid rgba(232,182,255,.36);
-  box-shadow: inset 0 0 18px rgba(232,182,255,.06);
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  max-width: 100%;
+}
+
+.admin-card img {
+  width: 74px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.admin-card h4 {
+  margin: 0 0 4px;
+}
+
+.admin-card p {
+  margin: 3px 0;
+  color: #ccc;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.admin-actions .primary-action {
+  margin-right: auto;
+}
+
+.admin-actions .right-action {
+  margin-left: 0;
+}
+
+.admin-actions button {
+  padding: 8px 9px;
+  font-size: 12px;
+}
+
+.secondary {
+  background: #333;
+  color: white;
+}
+
+.danger {
+  background: #ff4b4b;
+  color: white;
 }
 
 input,
@@ -216,86 +356,6 @@ button:disabled {
   opacity: .45;
 }
 
-.small-button {
-  padding: 9px 12px;
-  font-size: 13px;
-}
-
-.filters {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  margin: 16px 0 12px;
-  padding-bottom: 4px;
-}
-
-.filter {
-  background: #252525;
-  color: white;
-  white-space: nowrap;
-  font-size: 13px;
-  padding: 9px 11px;
-}
-
-.filter.active {
-  background: #e8b6ff;
-  color: #130014;
-}
-
-.admin-list {
-  display: grid;
-  gap: 11px;
-}
-
-.admin-card {
-  display: grid;
-  grid-template-columns: 74px 1fr;
-  gap: 11px;
-  background: #181818;
-  border-radius: 16px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.07);
-}
-
-.admin-card img {
-  width: 74px;
-  height: 96px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.admin-card h4 {
-  margin: 0 0 4px;
-}
-
-.admin-card p {
-  margin: 3px 0;
-  color: #ccc;
-  font-size: 12px;
-}
-
-.admin-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.admin-actions button {
-  padding: 8px 9px;
-  font-size: 12px;
-}
-
-.secondary {
-  background: #333;
-  color: white;
-}
-
-.danger {
-  background: #ff4b4b;
-  color: white;
-}
-
 .overlay {
   position: fixed;
   inset: 0;
@@ -323,6 +383,10 @@ button:disabled {
   padding: 22px;
   border: 1px solid rgba(232,182,255,.42);
   box-shadow: 0 0 22px rgba(232,182,255,.15);
+}
+
+.popup h2 {
+  margin: 0 42px 4px 0;
 }
 
 .close {
