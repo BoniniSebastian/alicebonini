@@ -39,11 +39,20 @@ const pinSubmit = document.getElementById("pinSubmit");
 const pinError = document.getElementById("pinError");
 const logoutAdmin = document.getElementById("logoutAdmin");
 
+const openUpload = document.getElementById("openUpload");
+const uploadModal = document.getElementById("uploadModal");
+const closeUpload = document.getElementById("closeUpload");
 const itemImage = document.getElementById("itemImage");
 const itemSize = document.getElementById("itemSize");
 const itemPrice = document.getElementById("itemPrice");
 const uploadItem = document.getElementById("uploadItem");
 const uploadStatus = document.getElementById("uploadStatus");
+
+const statAvailable = document.getElementById("statAvailable");
+const statHandle = document.getElementById("statHandle");
+const statHandleValue = document.getElementById("statHandleValue");
+const statHistory = document.getElementById("statHistory");
+const statHistoryValue = document.getElementById("statHistoryValue");
 
 const productModal = document.getElementById("productModal");
 const closeProduct = document.getElementById("closeProduct");
@@ -66,7 +75,7 @@ const toast = document.getElementById("toast");
 let allItems = [];
 let publicItems = [];
 let currentIndex = 0;
-let currentAdminFilter = "all";
+let currentAdminFilter = "reserved";
 let isAdmin = localStorage.getItem("alice_admin") === "true";
 
 function showToast(text) {
@@ -76,26 +85,50 @@ function showToast(text) {
 }
 
 function statusOf(item) {
+  if (item.status === "paid") return "reserved";
   return item.status || "available";
 }
 
 function isSoldLike(item) {
   const s = statusOf(item);
-  return s === "reserved" || s === "paid" || s === "delivered";
+  return s === "reserved" || s === "delivered";
 }
 
 function statusLabel(status) {
   if (status === "available") return "Till salu";
-  if (status === "reserved") return "Sålt / reserverad";
-  if (status === "paid") return "Betald";
-  if (status === "delivered") return "Levererad";
+  if (status === "reserved") return "Hantera";
+  if (status === "delivered") return "Historik";
   return "Till salu";
+}
+
+function priceNumber(price) {
+  const cleaned = String(price || "").replace(",", ".").match(/\d+(\.\d+)?/);
+  return cleaned ? Number(cleaned[0]) : 0;
+}
+
+function formatKr(value) {
+  return `${Math.round(value).toLocaleString("sv-SE")} kr`;
+}
+
+function updateStats() {
+  const available = allItems.filter(item => statusOf(item) === "available");
+  const handle = allItems.filter(item => statusOf(item) === "reserved");
+  const history = allItems.filter(item => statusOf(item) === "delivered");
+
+  const handleTotal = handle.reduce((sum, item) => sum + priceNumber(item.price), 0);
+  const historyTotal = history.reduce((sum, item) => sum + priceNumber(item.price), 0);
+
+  statAvailable.textContent = available.length;
+  statHandle.textContent = handle.length;
+  statHandleValue.textContent = `tot. ${formatKr(handleTotal)}`;
+  statHistory.textContent = history.length;
+  statHistoryValue.textContent = `tot. ${formatKr(historyTotal)}`;
 }
 
 function sortPublic(items) {
   return [...items].sort((a, b) => {
-    const aSold = statusOf(a) === "reserved" || statusOf(a) === "paid";
-    const bSold = statusOf(b) === "reserved" || statusOf(b) === "paid";
+    const aSold = statusOf(a) === "reserved";
+    const bSold = statusOf(b) === "reserved";
 
     if (aSold && !bSold) return 1;
     if (!aSold && bSold) return -1;
@@ -105,16 +138,7 @@ function sortPublic(items) {
 }
 
 function sortAdmin(items) {
-  const order = {
-    reserved: 1,
-    paid: 2,
-    available: 3,
-    delivered: 4
-  };
-
   return [...items].sort((a, b) => {
-    const diff = (order[statusOf(a)] || 9) - (order[statusOf(b)] || 9);
-    if (diff !== 0) return diff;
     return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
   });
 }
@@ -135,7 +159,7 @@ function renderGallery() {
     const card = document.createElement("article");
     card.className = "card";
 
-    if (isSoldLike(item)) card.classList.add("sold");
+    if (statusOf(item) === "reserved") card.classList.add("sold");
 
     card.innerHTML = `
       <img src="${item.imageData}" alt="Vara" />
@@ -143,7 +167,7 @@ function renderGallery() {
         <div class="card-price">${escapeHtml(item.price || "")}</div>
         <div class="card-size">${item.size ? "Storlek " + escapeHtml(item.size) : ""}</div>
       </div>
-      ${isSoldLike(item) ? `<div class="sold-badge">♥<br>SÅLD!</div>` : ""}
+      ${statusOf(item) === "reserved" ? `<div class="sold-badge">♥<br>SÅLD!</div>` : ""}
     `;
 
     card.addEventListener("click", () => openProduct(index));
@@ -159,15 +183,12 @@ function renderAdmin() {
 
   adminPanel.classList.remove("hidden");
   adminList.innerHTML = "";
+  updateStats();
 
-  let items = sortAdmin(allItems);
-
-  if (currentAdminFilter !== "all") {
-    items = items.filter(item => statusOf(item) === currentAdminFilter);
-  }
+  let items = sortAdmin(allItems).filter(item => statusOf(item) === currentAdminFilter);
 
   if (items.length === 0) {
-    adminList.innerHTML = "<p>Inget att visa här.</p>";
+    adminList.innerHTML = `<p>Inget att visa under ${filterName(currentAdminFilter)}.</p>`;
     return;
   }
 
@@ -201,32 +222,37 @@ function renderAdmin() {
   });
 }
 
-function adminButtons(status) {
-  let html = "";
+function filterName(filter) {
+  if (filter === "available") return "Till salu";
+  if (filter === "reserved") return "Hantera";
+  if (filter === "delivered") return "Historik";
+  return "";
+}
 
+function adminButtons(status) {
   if (status === "available") {
-    html += `<button data-action="reserve" class="secondary">Reservera</button>`;
+    return `
+      <button data-action="reserve" class="primary-action secondary">Hantera</button>
+      <button data-action="delete" class="danger right-action">Ta bort</button>
+    `;
   }
 
   if (status === "reserved") {
-    html += `<button data-action="paid">Betald</button>`;
-    html += `<button data-action="available" class="secondary">Ångra</button>`;
-  }
-
-  if (status === "paid") {
-    html += `<button data-action="delivered">Levererad</button>`;
+    return `
+      <button data-action="delivered" class="primary-action">Historik</button>
+      <button data-action="available" class="secondary right-action">Lägg tillbaks</button>
+      <button data-action="delete" class="danger">Ta bort</button>
+    `;
   }
 
   if (status === "delivered") {
-    html += `<button data-action="available" class="secondary">Lägg tillbaka</button>`;
+    return `
+      <button data-action="available" class="secondary right-action">Lägg tillbaks</button>
+      <button data-action="delete" class="danger">Ta bort</button>
+    `;
   }
 
-  if (status !== "delivered" && status !== "available") {
-    html += `<button data-action="delivered" class="secondary">Levererad</button>`;
-  }
-
-  html += `<button data-action="delete" class="danger">Ta bort</button>`;
-  return html;
+  return "";
 }
 
 async function handleAdminAction(item, action) {
@@ -238,15 +264,7 @@ async function handleAdminAction(item, action) {
         status: "reserved",
         reservedAt: serverTimestamp()
       });
-      showToast("Markerad som såld");
-    }
-
-    if (action === "paid") {
-      await updateDoc(ref, {
-        status: "paid",
-        paidAt: serverTimestamp()
-      });
-      showToast("Markerad som betald");
+      showToast("Flyttad till Hantera");
     }
 
     if (action === "delivered") {
@@ -254,7 +272,7 @@ async function handleAdminAction(item, action) {
         status: "delivered",
         deliveredAt: serverTimestamp()
       });
-      showToast("Markerad som levererad");
+      showToast("Flyttad till Historik");
     }
 
     if (action === "available") {
@@ -263,8 +281,8 @@ async function handleAdminAction(item, action) {
         buyerName: "",
         buyerMessage: "",
         reservedAt: null,
-        paidAt: null,
-        deliveredAt: null
+        deliveredAt: null,
+        paidAt: null
       });
       showToast("Tillbaka till salu");
     }
@@ -289,7 +307,7 @@ function openProduct(index) {
   modalPrice.textContent = item.price || "";
   modalSize.textContent = item.size ? `Storlek ${item.size}` : "";
 
-  if (isSoldLike(item)) {
+  if (statusOf(item) === "reserved") {
     buyButton.textContent = "Redan såld";
     buyButton.disabled = true;
   } else {
@@ -318,7 +336,7 @@ async function submitBuy() {
     return;
   }
 
-  if (!item || isSoldLike(item)) {
+  if (!item || statusOf(item) === "reserved") {
     buyStatus.textContent = "Den här varan är redan reserverad.";
     return;
   }
@@ -374,14 +392,17 @@ async function uploadNewItem() {
       buyerMessage: "",
       createdAt: serverTimestamp(),
       reservedAt: null,
-      paidAt: null,
-      deliveredAt: null
+      deliveredAt: null,
+      paidAt: null
     });
 
     itemImage.value = "";
     itemSize.value = "";
     itemPrice.value = "";
-    uploadStatus.textContent = "Publicerad!";
+    uploadStatus.textContent = "";
+    uploadModal.classList.add("hidden");
+    currentAdminFilter = "available";
+    setActiveFilter("available");
     showToast("Varan är upplagd");
   } catch (err) {
     console.error(err);
@@ -450,6 +471,12 @@ function applyAdminState() {
   renderAdmin();
 }
 
+function setActiveFilter(filter) {
+  document.querySelectorAll(".filter").forEach(button => {
+    button.classList.toggle("active", button.dataset.filter === filter);
+  });
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -487,6 +514,15 @@ logoutAdmin.addEventListener("click", () => {
   showToast("Utloggad");
 });
 
+openUpload.addEventListener("click", () => {
+  itemImage.value = "";
+  itemSize.value = "";
+  itemPrice.value = "";
+  uploadStatus.textContent = "";
+  uploadModal.classList.remove("hidden");
+});
+
+closeUpload.addEventListener("click", () => uploadModal.classList.add("hidden"));
 uploadItem.addEventListener("click", uploadNewItem);
 
 closeProduct.addEventListener("click", () => productModal.classList.add("hidden"));
@@ -505,9 +541,8 @@ sendBuy.addEventListener("click", submitBuy);
 
 document.querySelectorAll(".filter").forEach(button => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
-    button.classList.add("active");
     currentAdminFilter = button.dataset.filter;
+    setActiveFilter(currentAdminFilter);
     renderAdmin();
   });
 });
@@ -522,6 +557,10 @@ buyModal.addEventListener("click", e => {
 
 pinModal.addEventListener("click", e => {
   if (e.target === pinModal) pinModal.classList.add("hidden");
+});
+
+uploadModal.addEventListener("click", e => {
+  if (e.target === uploadModal) uploadModal.classList.add("hidden");
 });
 
 const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
@@ -540,3 +579,4 @@ onSnapshot(q, snapshot => {
 });
 
 applyAdminState();
+setActiveFilter(currentAdminFilter);
