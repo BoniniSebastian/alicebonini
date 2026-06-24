@@ -2,14 +2,14 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Alice Bonini</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
 <header class="header">
-  <button id="adminGear" class="gear">⚙</button>
+  <button id="adminGear" class="gear" aria-label="Admin">⚙</button>
   <h1>Alice Bonini</h1>
 </header>
 
@@ -17,7 +17,7 @@
   <section id="adminPanel" class="admin-panel hidden">
     <div class="admin-top">
       <h2>Admin</h2>
-      <button id="logoutAdmin">Logga ut</button>
+      <button id="logoutAdmin" class="small-button">Logga ut</button>
     </div>
 
     <div class="upload-box">
@@ -32,7 +32,7 @@
     <div class="filters">
       <button class="filter active" data-filter="all">Alla</button>
       <button class="filter" data-filter="available">Till salu</button>
-      <button class="filter" data-filter="reserved">Köpta</button>
+      <button class="filter" data-filter="reserved">Sålt!</button>
       <button class="filter" data-filter="paid">Betalda</button>
       <button class="filter" data-filter="delivered">Levererade</button>
     </div>
