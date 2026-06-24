@@ -26,7 +26,7 @@
     <div class="stats-row">
       <div class="stat-card">
         <div id="statAvailable" class="stat-number">0</div>
-        <div class="stat-label">prylar ute</div>
+        <div id="statAvailableValue" class="stat-label">tot. 0 kr</div>
       </div>
       <div class="stat-card">
         <div id="statHandle" class="stat-number">0</div>
@@ -66,9 +66,20 @@
     <h2>Lägg upp vara</h2>
     <input id="itemImage" type="file" accept="image/*" />
     <input id="itemSize" type="text" placeholder="Storlek, t.ex. 152 / S / M" />
-    <input id="itemPrice" type="text" placeholder="Pris, t.ex. 80 kr" />
+    <input id="itemPrice" type="text" placeholder="Pris, t.ex. 80" />
     <button id="uploadItem">Publicera</button>
     <p id="uploadStatus"></p>
+  </div>
+</div>
+
+<div id="editModal" class="overlay hidden">
+  <div class="popup">
+    <button id="closeEdit" class="close">×</button>
+    <h2>Ändra vara</h2>
+    <input id="editSize" type="text" placeholder="Storlek" />
+    <input id="editPrice" type="text" placeholder="Pris" />
+    <button id="saveEdit">Spara ändring</button>
+    <p id="editStatus"></p>
   </div>
 </div>
 
