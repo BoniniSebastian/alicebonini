@@ -86,7 +86,7 @@ function isSoldLike(item) {
 
 function statusLabel(status) {
   if (status === "available") return "Till salu";
-  if (status === "reserved") return "Reserverad / köpt";
+  if (status === "reserved") return "Sålt / reserverad";
   if (status === "paid") return "Betald";
   if (status === "delivered") return "Levererad";
   return "Till salu";
@@ -238,7 +238,7 @@ async function handleAdminAction(item, action) {
         status: "reserved",
         reservedAt: serverTimestamp()
       });
-      showToast("Markerad som reserverad");
+      showToast("Markerad som såld");
     }
 
     if (action === "paid") {
